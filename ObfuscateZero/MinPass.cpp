@@ -1,37 +1,39 @@
-#include "llvm/Pass.h"
-#include "llvm/IR/Function.h"
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/PassManager.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Plugins/PassPlugin.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 using namespace llvm;
 
 namespace 
 {
-    class myPass : public BasicBlockPass {
-        public:
-            static char ID;
-
-            MyPass() : BasicBlockPass(ID) {}
-
-            bool runOnBasicBlock(BasicBlock &BB) override 
-            {
-                errs() << "Block runner now, what i m in :p...\n";
-                return false;
+    struct MyPass : PassInfoMixin<MyPass> {
+        PreservedAnalyses run(Function &F, FunctionAnalysisManager &) {
+            for (BasicBlock &BB : F) {
+            
             }
+        return PreservedAnalyses::all();
+        }
     };
 }
 
-char MyPass::ID = 0;
-static RegisterPass<MyPass> X("MyPass", "Obfuscates zeroes", false, false);
-
-// register pass for clang use
-static void registerMyPassPass(const PassManagerBuilder &, PassManagerBase &PM)
+extern "C" ::llvm::PassPluginLibraryInfo llvmGetPassPluginInfo() 
 {
-    PM.add(new MyPass());
+    return {
+        LLVM_PLUGIN_API_VERSION, "MyPass", LLVM_VERSION_STRING,[](PassBuilder &PB) 
+        {
+            PB.registerPipelineParsingCallback( [](StringRef Name, FunctionPassManager &FPM, ArrayRef<PassBuilder::PipelineElement>) 
+            {
+                if (Name == "MyPass")
+                {
+                    FPM.addPass(MyPass());
+                    return true;
+                }
+                return false;
+            });
+        }
+    };
 }
-
-static RegisterStandardPasses RegisterMBAPass(PassManagerBuilder::EP_EarlyAsPossible, registerMyPassPass);
-
-
